@@ -14,18 +14,30 @@ public class Member {
     @JoinColumn(name = "TEAM_ID")
     private Team team;
 
+    // JPQL 타입 표현.
+    @Enumerated(EnumType.STRING)
+    private MemberType type;
+
+    public MemberType getType() {
+        return type;
+    }
+
+    public void setType(MemberType memberType) {
+        this.type = type;
+    }
+
     public Team getTeam() {
         return team;
+    }
+
+    public void setTeam(Team team) {
+        this.team = team;
     }
 
     // 양방향 편의성 메서드
     public void changeTeam(Team team) {
         this.team = team;
         team.getMembers().add(this);
-    }
-
-    public void setTeam(Team team) {
-        this.team = team;
     }
 
     public Long getId() {

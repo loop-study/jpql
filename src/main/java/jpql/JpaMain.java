@@ -1,5 +1,7 @@
 package jpql;
 
+import org.hibernate.dialect.MySQL5Dialect;
+
 import javax.persistence.*;
 import java.util.List;
 
@@ -24,6 +26,7 @@ public class JpaMain {
             member.setUsername("member1");
             member.setAge(10);
             member.setTeam(team);
+            member.setType(MemberType.ADMIN);
             em.persist(member);
 
 //            }
@@ -91,10 +94,65 @@ public class JpaMain {
 //            for (Member member1 : resultList) {
 //                System.out.println("member = " + member1.toString());
 //            }
+//
+//            String query = "select m from Member m left join m.team t on t.name = 'teamA'";
+//            List<Member> memberList = em.createQuery(query, Member.class)
+//                    .getResultList();
 
-            String query = "select m from Member m left join m.team t on t.name = 'teamA'";
-            List<Member> memberList = em.createQuery(query, Member.class)
+//            String query = "select m.username, 'HELLO', true From Member m " +
+////                           "where m.type = jpql.MemberType.ADMIN";
+//                           "where m.type = :userType";
+//
+//            List<Object[]> result = em.createQuery(query)
+//                    .setParameter("userType", MemberType.ADMIN)
+//                    .getResultList();
+//
+//            for (Object[] objects : result) {
+//                System.out.println("objects = " + objects[0]); //teamA
+//                System.out.println("objects = " + objects[1]); //HELLO
+//                System.out.println("objects = " + objects[2]); //true
+//            }
+
+            //queryDsl 이용하면 단순하게 처리됨
+//            String query = "select " +
+//                                "case when m.age <= 10 then '학생요금' " +
+//                                "     when m.age >= 60 then '경로요금' " +
+//                                "     else '일반요금' end " +
+//                                "from Member m";
+
+            //coalesce
+//            String query = "select coalesce(m.username, '이름 없는 회원') as username " +
+//                            "from Member m ";
+
+            //nullif
+//            String query = "select nullif(m.username, '관리자') as username " +
+//                            "from Member m";
+
+            //***사용자 정의 함수 호출 - 디비 방언에 추가되어 있어야한다
+            //MySQL5Dialect registerFunction(...) 으로 등록되어있는걸 볼 수 있다
+//            String query = "select function('group_concat', m.type) as username " +
+//                    "from Member m";
+
+            // MyH2Dialect 방언에 등록 후 사용이 가능해짐
+//            String query = "select group_concat(m.username) from Member m";
+
+            // concat 도 있고. substring, trim, LOWER, UPPER, LENGTH 등등 다 가능
+//            String query = "select concat('a', 'b') as strsum " +
+//                    "from Member m";
+
+//            @OrderColumn // 사용 비권장
+//            String query = "select index(t.members) " +
+//                    "from Team t";
+
+            String query = "select size(t.members) " +
+                    "from Team t";
+
+            List<Integer> resultList = em.createQuery(query, Integer.class)
                     .getResultList();
+
+            for (Integer s : resultList) {
+                System.out.println("s = " + s);
+            }
 
             tx.commit();
         } catch (Exception e) {
