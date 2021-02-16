@@ -3,6 +3,7 @@ package jpql;
 import org.hibernate.dialect.MySQL5Dialect;
 
 import javax.persistence.*;
+import java.util.Collection;
 import java.util.List;
 
 public class JpaMain {
@@ -22,12 +23,40 @@ public class JpaMain {
             team.setName("teamA");
             em.persist(team);
 
+            Team team2 = new Team();
+            team2.setName("teamB");
+            em.persist(team2);
+
             Member member = new Member();
             member.setUsername("member1");
-            member.setAge(10);
             member.setTeam(team);
-            member.setType(MemberType.ADMIN);
             em.persist(member);
+
+            Member member2 = new Member();
+            member2.setUsername("member2");
+            member2.setTeam(team);
+            em.persist(member2);
+
+            Member member3 = new Member();
+            member3.setUsername("member3");
+            member3.setTeam(team2);
+            em.persist(member3);
+
+            // 벌크 연산을 여기서 하면 어떻게 될까? 이 쿼리만 곧바로 디비에 직접 반영됨.
+            int resultCount2 = em.createQuery("update Member m set m.age = 20")
+                    .executeUpdate();
+
+            System.out.println("resultCount2 = " + resultCount2);
+
+            // 디비상에는 20 으로 되어있음. 데이터에 문제가 생김
+            System.out.println("member.getAge = " + member.getAge());  // 0
+            System.out.println("member2.getAge = " + member2.getAge());// 0
+            System.out.println("member3.getAge = " + member3.getAge());// 0
+            
+            // 여기서 조회하면? 여기도 0. 영속성에 등록된 캐시값을 가져오기에 괴리감 발생.
+            // clear 후 다시 조회해야 일치됨
+            Member findMember = em.find(Member.class, member.getId());
+            System.out.println("findMember.getAge() = " + findMember.getAge());
 
 //            }
 //
@@ -144,15 +173,103 @@ public class JpaMain {
 //            String query = "select index(t.members) " +
 //                    "from Team t";
 
-            String query = "select size(t.members) " +
-                    "from Team t";
+//            String query = "select size(t.members) " +
+//                    "from Team t";
 
-            List<Integer> resultList = em.createQuery(query, Integer.class)
-                    .getResultList();
+            // 상태필드
+//            String query = "select m.username from Member m";드
 
-            for (Integer s : resultList) {
-                System.out.println("s = " + s);
-            }
+//            List<Integer> resultList = em.createQuery(query, Integer.class)
+//                    .getResultList();
+
+//            for (Integer s : resultList) {
+//                System.out.println("s = " + s);
+//            }
+
+            // 단일값 연관 경로 - 묵시적 내부조인, 탐색 가능 -> 쿼리 튜닝 어려움.
+//            String query = "select m.team from Member m";
+            // 콜렉션값 연관 경로 - 묵시적 내부 조인, 탐색 불가능 -> 쿼리 튜닝 어려움.
+//            String query = "select t.members from Team t";
+            // 명시적 조인을 하면 탐색 가능
+//            String query = "select m.username from Team t join t.members m";
+//
+//            // 묵시적 내부 조인이 안되게 하자. 운영하기 힘들어진다.
+//            // 이런 방식으론 사용 안함.
+//            Collection result = em.createQuery(query, Collection.class)
+//                    .getSingleResult();
+//
+//            System.out.println("result = " + result);
+
+            // ********** fetch join **********
+//            String query = "select m from Member m";
+//            String query = "select m from Member m join fetch m.team";
+//            String query = "select t from Team t join fetch t.members";
+
+            // distinct 중복 제거, 조회 후 결과값 중복을 줄여줌
+//            String query = "select distinct t from Team t join fetch t.members";
+
+            // 패치 조인 대상에 별칭을 못 준다
+            // 팀에 컬렉션이 여러개면 둘 이상 컬렉션 패치조인 하면 안된다. 데이터 정합성 문제가 생김.
+//            String query = "select t from Team t";
+            // -> select m.*, t.* from member m inner join team t on m.team_id = t.id
+
+            // 페치 조인에 페이징까지 쓰면 jpql 에서 경고 메시지 남김
+            // 모든 데이터 다 퍼올리고 페이징처리 하기 때문임!!!
+            // 다대일로 쿼리 방향을 잡자
+            // select t from Team t join fetch t.members
+            // -> select m from Member m jon fetch m.team t
+//            List<Team> resultList = em.createQuery(query, Team.class)
+//                    .setFirstResult(0)
+//                    .setMaxResults(2)
+//                    .getResultList();
+//
+//            System.out.println("resultList = " + resultList.size());
+
+//            for (Team tm : resultList) {
+////                System.out.println("mm.getUsername() = " + mm.getUsername() + ", " + mm.getTeam().getName());
+//                // select m from Member m 로 조회 시.
+//                //member1, 팀A(SQL)
+//                //member2, 팀A(1차캐시)
+//                //member3, 팀B(SQL)
+//                //팀 소속 수 만큼 조회됨... 지연 로딩임.
+//                //회원이 수백명이라면? 팀도 최대 수백번 조회 쿼리 발생함...
+//                //회원 100명 -> n + 1
+//
+//                //이 해결방법은 fetch join 뿐임
+//                // select m from Member m join fetch m.team
+//                //fetch join 후 한번만 조회함!!
+//                System.out.println("tm.getName() = " + tm.getName() + " | members=" + tm.getMembers().size());
+//                for (Member mm : tm.getMembers()) {
+//                    System.out.println("mm = " + mm);
+//                }
+//            }
+
+            // m := member 가 m.id = ? 로 바뀜
+//            String query = "select m from Member m where m = :member";
+//
+//            Member findMember = em.createQuery(query, Member.class)
+//                    .setParameter("member", member)
+//                    .getSingleResult();
+
+//            String query = "select m from Member m where m.team = :team";
+//
+//            List<Member> members = em.createQuery(query, Member.class)
+//                    .setParameter("team", team)
+//                    .getResultList();
+
+//            List<Member> resultList = em.createNamedQuery("Member.findByUsername", Member.class)
+//                    .setParameter("username", "member1")
+//                    .getResultList();
+
+//            System.out.println("resultList = " + resultList);
+
+            // 벌크 연산, 몇건 영향 받았는지 건수 반환함
+            // 벌크 연산은 영속성을 무시하고 디비에 직접 쿼리 날림
+            // 벌크 연산을 먼저 실행시키고 영속성 컨텍스트 초기화 시키자
+//            int resultCount = em.createQuery("update Member m set m.age = 20")
+//                    .executeUpdate();
+//
+//            System.out.println("resultCount = " + resultCount);
 
             tx.commit();
         } catch (Exception e) {

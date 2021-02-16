@@ -1,5 +1,7 @@
 package jpql;
 
+import org.hibernate.annotations.BatchSize;
+
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -15,6 +17,7 @@ public class Team {
 
     private String name;
 
+//    @BatchSize(size = 100) // 설정파일에서 디폴트 값으로 추가 가능
     @OneToMany(mappedBy = "team")
     private List<Member> members = new ArrayList<>();
 
